@@ -4,8 +4,8 @@ There may be times when `testing` is needed and dummy data are not available. Tw
 
 # Requirements: 
 
-+  `R`: 
++  **R**: 
 `randomnames` | `generator`  | `RPostgreSQL` 
 
-+ `Python`: 
++ **Python**: 
 `!pip install faker`
