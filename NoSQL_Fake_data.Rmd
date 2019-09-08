@@ -1,0 +1,202 @@
+---
+title: "Dummy_data_nosql"
+author: "Mr Fugu is Awesome"
+date: "7/28/2018"
+output:
+   pdf_document:
+     latex_engine: xelatex
+   
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Useful help:
+## http://www.rsquaredacademy.com/blog/post/rmysql-for-beginners/
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+#library(RMySQL) #as a backup if psql doesn't work send file to sql then save file
+library(randomNames) #fake names
+library(knitr) #help run code
+library(markdown) #create markdown files i.e. pdf
+library(dbConnect) #connect to databases
+library(DBI)
+library(tidyverse) #if you parse files
+library(dplyr)
+library(generator) #generate fake data
+library(RPostgreSQL) # run psql instance
+library(rPython)
+```
+
+#Generating fake data: 
+
+```{r} 
+#Users info:
+crdt_crd<-generator::r_credit_card_numbers(n=6000)
+email<-generator::r_email_addresses(n=6000)
+dob<-generator::r_date_of_births(n=6000)
+#last_name<-randomNames(n=6000,name.sep=",",name.order="last.first")
+#WW<-strsplit(W,",")
+#first_name<-randomNames(n=6000,return.complete.data = TRUE,which.names = "first")
+first_name<-randomNames(n=6000,return.complete.data = FALSE,which.names = "first")
+last_name<-randomNames(n=6000,return.complete.data = FALSE,which.names = "last")
+primary_phone_number<-generator::r_phone_numbers(n=6000)
+
+
+#possible_all_gen)randomNames(n=6000,return.complete.data = TRUE)
+
+user_info<-list(crdt_crd,email,first_name,last_name,primary_phone_number)
+data.frame(matrix((user_info),nrow=length(user_info)))
+        
+users<-as.data.frame(matrix(unlist(cbind(user_info)),ncol = 5),as.factor=FALSE)
+users<-users[0:5826,]
+#changing column names to reflect data: helped me
+# https://stackoverflow.com/questions/6081439/changing-column-names-of-a-data-frame
+names(users)[1]<-paste("credit_card")
+names(users)[2]<-paste("email")
+names(users)[3]<-paste("first_name")
+names(users)[4]<-paste("last_name")
+names(users)[5]<-paste("primary_phone_number")
+#verify: by calling dataframe:
+
+
+#data I generated in Python Faker and imported here:
+city<-read.csv("fake_city.csv")
+city<-city[0:5826,]
+address<-read.csv("fake_address.csv")
+address<-address[0:5826,]
+state<-read.csv("fake_state_abbr.csv")
+state<-state[0:5826,]
+user_name<-read.csv("fake_user.csv")
+user_name<-unique(user_name)
+zipcode<-read_csv("fake_zipcode.csv")
+zipcode<-zipcode[0:5826,]
+
+
+
+info<-cbind(address,city,state,user_name,zipcode)
+info<-info[0:5826,]
+#rename columns:
+names(info)[1]<-paste("address_1")
+names(info)[2]<-paste("city")
+names(info)[3]<-paste("state")
+names(info)[4]<-paste("users_name")
+names(info)[5]<-paste("zipcode")
+#info
+
+#Combine both dataframes to get the info needed for PSQL USER TABLE: 
+full_user<-cbind(users,info)
+
+#Uncheck to run code: and join POstgre connection
+
+#require("RPostgreSQL")
+#drvr<- dbDriver("PostgreSQL") #create psql connection
+
+#conn <- dbConnect(drvr, dbname = "Bobs_Pizza",host="localhost")  #open connection
+#if(dbExistsTable(conn,"users")){
+ # dbWriteTable(conn,"users",full_user,append=T,row.names=F)}
+
+
+```
+#This is full user info writng to csv to use with mongodb
+```{r}
+
+write.csv(full_user,"full_user.csv")
+
+```
+#Creating: PSQL connection and dump 1000 user info
+```{r}
+require("RPostgreSQL")
+drvr<- dbDriver("PostgreSQL") #create psql connection
+
+conn <- dbConnect(drvr, dbname = "Bobs_Pizza",host="localhost") 
+inventory_ingredients<-dbSendQuery(conn,'select *from track_inventory')
+inventory_ingredients<-fetch(inventory_ingredients)
+write.csv(inventory_ingredients,"inventory_ingeredient.csv")
+
+junction_table<-dbSendQuery(conn,'select*from junction_table')
+junction_table<-fetch(junction_table)
+write.csv(junction_table,"junction_table.csv")
+
+storing_recipes<-dbSendQuery(conn,'select*from storing_recipes')
+storing_recipes<-fetch(storing_recipes)
+write.csv(storing_recipes,"storing_recipes.csv")
+
+```
+#Order Table csv write out to use with mongo: 
+```{r}
+
+#Creating Order Table: 60,0000 ORDERS::::::
+recipes_names<-read_csv('storing_recipes.csv')
+recipe_names<-recipes_names[sample(nrow(recipes_names),60000,replace = T),]
+recipe_names<-recipe_names[2]
+
+
+user_name<-as.data.frame(user_name)
+user_name<-user_name[sample(nrow(user_name),60000,replace=T),]
+user_name<-(sample((user_name),60000,replace=T))
+user_name<-as.data.frame(user_name)
+
+
+
+
+ingredient_name<-read_csv('inventory.csv')
+ingredient_name<-ingredient_name[sample(nrow(ingredient_name),60000,replace = T),]
+ingredient_name<-ingredient_name[2]
+
+
+Orders<-cbind(recipe_names,user_name,ingredient_name)
+
+
+# Timestamp faker: https://stat.ethz.ch/pipermail/r-help/2006-March/102713.html modified slightly
+
+
+# set start and end dates to sample between
+#day.start <- "2017/01/01"
+#day.end <- "2018/07/28"
+
+# define a random date/time selection function
+#rand.day.time <- function(day.start,day.end,size) {
+#  dayseq <- seq.Date(as.Date(day.start),as.Date(day.end),by="day")
+#  dayselect <- sample(dayseq,size,replace=TRUE)
+#  hourselect <- sample(0:23,size,replace=TRUE)
+#  minselect <- sample(0:59,size,replace=TRUE)
+#  as.POSIXlt(paste(dayselect, hourselect,":",minselect,sep="") )
+#}
+
+#rand.day.time(day.start,day.end,size=60000)
+
+# CREATING FAKE TIMESTAMP:
+latemail <- function(N, st="2018/06/01", et="2018/07/28") {
+    st <- as.POSIXct(as.Date(st))
+    et <- as.POSIXct(as.Date(et))
+    dt <- as.numeric(difftime(et,st,unit="sec"))
+    ev <- sort(runif(N, 0, dt))
+    rt <- st + ev
+ }
+dates<-latemail(N=60000)
+dates<-as.data.frame(dates)
+
+
+Orders<-cbind(recipe_names,user_name,dates)
+
+#write.csv(Orders,"Orders_look.csv")
+#write.csv(Orders,"orders.csv")
+unique(nrow(Orders))
+#send file to POSTGRES to make orders table:
+#Uncheck to run code: and join POstgre connection
+
+require("RPostgreSQL")
+
+drvr<- dbDriver("PostgreSQL") #create psql connection
+
+conn <- dbConnect(drvr, dbname = "Bobs_Pizza",host="localhost")  #open connection
+if(dbExistsTable(conn,"orders_junction_table")){
+  dbWriteTable(conn,"orders_junction_table",Orders,append=T,row.names=F)}
+```
+
+```{r}
+
+sum(duplicated(nrow(Orders)))
+
+```
