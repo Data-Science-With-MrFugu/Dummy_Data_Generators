@@ -5,7 +5,7 @@ There may be times when `testing` is needed and dummy data are not available. Tw
 # Requirements: 
 
 +  **R**: 
-`randomnames` | `generator`  | `RPostgreSQL`    (as of R 3.4.4 : randomNames thorws an error 04/01/20)
+`randomnames` | `generator`  | `RPostgreSQL`    (as of R 3.4.4 : randomNames throws an error 04/01/20)
 
 + **Python**: 
 `!pip install faker` | `!pip install usaddress`
